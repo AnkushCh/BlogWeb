@@ -1,0 +1,38 @@
+                                         {% extends 'blogapp/base.html' %}
+
+{% load crispy_forms_tags %}
+{% block content %}
+
+    <section id="login">
+    <div class="container">
+        <div class="row py-3">
+            <div class="col-md-8 mx-auto">
+
+                <div class="card">
+                    <div class="card-body">
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                         <h2 class="text-secondary border-bottom">Login</h2>
+                    </div>
+                    {{form|crispy}}
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-info btn-block">Login</button>
+                    </div>
+
+                </form>
+                <div class="pt-2">
+                    <small class="text-muted">Not Have an Account ?
+                        <a href="{% url 'usersapp:register' %}" class="ml-2">Sign Up</a>
+                    </small>
+                </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+{% endblock %}

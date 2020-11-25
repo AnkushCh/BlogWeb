@@ -1,0 +1,1076 @@
+create a templates dir and then create a fir in templates dir with appname.
+
+so each templates will be considered specific to that app.
+
+so for each app we create a dir with same name in templates dir.
+
+
+post = [
+    {'author': 'jiss',
+     'title': 'blogpost',
+     'content': 'First Post',
+     }
+]
+
+
+def home(request, template_name='blogapp/index.html'):
+    context = {'post': post}
+    return render(request, template_name, context)
+
+
+
+here v pass the post data as a dict in view function.
+
+by passing context dict as an argument to render() it allows the templates to
+render the contents of context dictionary.
+
+
+so the key name 'post' is accessible with in the template index.html
+and we can loop thru it to print the data in the post to the template.
+
+
+template engine in django allows to write code with in the template.
+
+
+    <section id="content">
+        <div class="container">
+            {% for each in post %}
+                <p>
+                <strong>Author:</strong> <span>{{each.author}}</span>
+                    </p>
+                <p>
+                <strong>Title:</strong> <span>{{each.title}}</span>
+                </p>
+                <p>
+                <strong>Content:</strong> <span>{{each.content}}</span>
+                </p>
+            {% endfor %}
+        </div>
+    </section>
+
+
+use  {{}} to access a variable inside the post.
+
+
+
+
+template inheritamce
+
+
+nehriting the base template to each other templates.
+
+
+
+error
+---------
+django.db.utils.OperationalError: no such table: auth_user
+
+problem is not created database for the project
+so to create them,
+- python manage.py migrate
+
+
+
+in django orm we can represent db structures as classes.
+and we call them as models.
+
+
+each class will be a table in the db.
+and each attribute of class will be a diff field in that table.
+
+all models inherit from models.Model class.
+
+TextField is alwaysu unrestricted field.  so need to specif the max lenght
+
+
+
+
+
+
+from django.db import models
+from datetime import datetime
+# import the user model
+from django.contrib.auth.models import User
+
+
+# Create your models here.
+class Post(models.Model):
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+    date = models.DateField(default=datetime.now)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+
+
+author = models.ForeignKey(User, on_delete=models.CASCADE)
+
+-- we want to tell django wat to do if author created the post gets deleted. 
+
+so here models.CASCADE means delete the post as well when the user is deleted.
+
+if a user has 10 post, and if user is deleted then the aforementioned posts also gets deleted.
+
+but if v delete a post, it not delete the user who publshed it.
+
+
+onve ceated a models need t run the migrations to uodate that changes in the db.
+
+python manage.py makemigrations
+
+ -- it makes an 0001_initial.py file i migrations.
+	ehich conatins sqlcode to be executed.
+to see the sqlcode,
+ - python manage.py sqlmigrate bloagapp 0001_initial
+
+to apply the migrayions finally to the db,
+	- python manage.py migrate 
+	it will create a table in the db.
+
+
+
+by running migrations we cal always make change to the db when v made changes in the model.
+
+Using Django shell
+-----------------------
+
+
+from appname.models import User
+
+>>> User.objects.all()
+<QuerySet [<User: jiss>, <User: modric>]>
+
+> User.objects.first()
+<User: jiss>
+
+
+>> User.objects.filter(username='jiss')
+<QuerySet [<User: jiss>]>
+
+
+
+>>> user = User.objects.get(id=1)
+>>> user
+
+
+p>{{post.date|date:"F d, Y"}}</p> -- strips the time from the datetime,
+refer : https://docs.djangoproject.com/en/2.2/ref/templates/builtins/#date
+
+
+
+
+
+create a new app for users.
+create  register form for them using userCreationForm class
+
+from django.shortcuts import render
+# import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm
+
+
+# Create your views here.
+def register(request, template_name='usersapp/register.html'):
+    form = UserCreationForm()
+    return render(request, template_name, {'form': form})
+
+
+here v shud create the templates  in app dir.
+-usersapp
+	-templates
+		-usersapp
+			register.html
+
+
+
+
+# Create your views here.
+def register(request):
+    # create instance of form , if request is not posted or if posted.
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            form.save()
+            username = form.cleaned_data.get('username')
+            messages.success(request, f'Account created for {username}!')
+            return redirect('blogapp-home')
+    else:
+        form = RegisterForm()
+    return render(request, 'usersapp/register.html', {'form': form})
+
+
+when v submitted the form it submitted as a post request,
+and in view if request.method  is post.
+v create a form instance with the posted data.
+so now our form has usename, email, and passwords fields.
+and then if our form is valid. then save it to db, if not valid return the register template with form having the value v submitted, and then fetch the username form that form,
+later v print a flash message success bcose it is saved successfully,
+later v redirect the page to our home page.
+
+
+in case method is not post v create an empty form
+
+	 
+
+changing navbar link based on user authentcation
+---------------------------------------------------
+
+{% if user.is_authenticated %}
+    <a class="nav-item nav-link" href="{% url 'usersapp:logout' %}">Logout</a>
+{% else %}
+<a class="nav-item nav-link" href="{% url 'usersapp:login' %}">Login</a>
+<a class="nav-item nav-link" href="{% url 'usersapp:register' %}">Register</a>
+{% endif %}
+
+
+next giving restriction to access a user profile b4 login
+----------------------------------------------------
+
+
+checkin before accessing user profile page
+
+# importing login requfred decorator before accesing profile page
+from django.contrib.auth.decorators import login_required
+
+#later add 
+@login_required
+def user_profile(request):
+    return render(request, template_name='usersapp/profile.html')
+
+
+
+page not fornd
+-------------------
+Request URL:	http://127.0.0.1:8080/accounts/login/?next=/user/profile/
+
+given abv is the default path django looks for login,
+so here v need to expicilty tell django to where to find our login route.
+ 
+we can easily set that by adding LOGIN_URL in settings.py file
+
+LOGIN_URL = 'userapp:login'
+
+our url changes to: while moving to login/
+
+http://127.0.0.1:8080/user/login/?next=/user/profile/
+which means next after login we naviagte to profile page	
+
+
+thus setting this allows users to login and then redirect to the profile page once loggedout
+ 
+
+
+one to one relationship
+----------------------
+one user have one prfile and one profile associates with one user.
+
+
+MODELS.PY
+--------------
+
+from django.db import models
+
+from django.contrib.auth.models import User
+
+
+# Create your models here.
+
+class Profile(models.Model):
+	v set a one to one relation with feafult User model in django
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+	if user is delted proile deleted bt if profile deleted user not 	deleted.
+	   image = models.ImageField(default='default.jpg', upload_to='profile_images')
+
+    def __str__(self):
+        return f"{self.user.username}'s profile"
+
+
+     
+
+
+python manage.py shell
+-----------------------
+from django.contrib.auth.models import User
+user = User.objects.filter('megan').first()
+
+user.profile
+user.profile.user
+user.profile.image
+user.profile.image.url
+
+
+now v can access the profile from user models since onetooine relationship.
+
+now v created a profilw page for the user.
+
+post_save - a signal that gets fired after saved the objects.
+so here v need to fire a postsave signal when a user is created.
+
+from django.db.models.signals import post_save
+from django.contrib.auth.models import User
+
+here user model is the dsender f the signal
+next v need to create who receives the signal andperform some task.
+
+from django.dispatch import receiver
+
+and finally import profile models
+from .models import Profile
+
+the main reaoson for doing this to create a user profile for new users.
+
+so lets cretate a fucntion first,
+
+# here v have  a funtion that createsa user profile
+# every time a user is created.
+@receiver(post_save, sender=User)
+def CreateProfile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance)
+
+# there is asender user and a sginal post_save
+# means that when a user is saved  User sends post_save signal
+# and the signa is received by the decoraot receiver
+# and here this reciever is th create_profile function,
+# and this takes all the arguments.
+# two main r instance and created args.
+# and then if that user instance is created ,then create a profile of that user instance.
+
+
+@receiver(post_save, sender=User)
+def SaveProfile(sender, instance, **kwargs):
+    instance.profile.save()
+
+
+# herev just save the instance of user profile.
+
+
+and at last v need to impor these signal in the apps.py  module.
+from django.apps import AppConfig
+
+
+class UsersappConfig(AppConfig):
+    name = 'usersapp'
+
+    def ready(self):
+        import usersapp.signals
+
+
+later run server and creat a user and later login and access a prfile 
+it will only be created instead of going to admin and later create a profile for that new user lot more easier.
+
+
+uodating user profile
+----------------------
+v create forms suing modelforms
+
+modelforms allows to create a form that works with a specific db model
+here v create a form that works with our User model.
+
+
+# updating user - modelforms
+class UserUpdateForm(forms.ModelForm):
+    email = forms.EmailField()
+
+    # here v just update the email and username fields.
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+
+
+# updating profile image so create a new form that inherits model form
+class ProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = Profile
+        fields = ['image']
+
+ here v used two forms but it appears in on form only
+
+<form method="POST" enctype="multipart/form-data">
+
+-- use enctype attribute while using a form that contains updating images. else image  may not be saved while submitting the form.
+
+
+  # v instantiate our forms with the current values in the form
+    update_form = UserUpdateForm(instance=request.user)
+    profile_form = ProfileUpdateForm(instance=request.user.profile)
+
+here v instantiate the form with the current data in it without empty.
+
+
+
+
+
+
+our entire user profile form including updating, saving images....
+---------------------------------------------------------------------
+
+@login_required
+def user_profile(request, template_name='usersapp/profile.html'):
+    # here v check whether the method is post or not
+    if request.method == 'POST':
+        # v instantiate our forms with the current values in the form AND PASS THE POSTED DATA INTO IT.
+        # request.FILES r used since v post images.
+        update_form = UserUpdateForm(request.POST, instance=request.user)
+        profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=request.user.profile)
+        # if both r valid forms
+        if update_form.is_valid() & profile_form.is_valid():
+            update_form.save()
+            profile_form.save()
+            messages.success(request, 'Your Account has bee updated!')
+
+            # later redirect to our profile page after saving the data to db
+            return redirect('usersapp:user_profile')
+    # if not, still leave the form wth the current values
+    else:
+        update_form = UserUpdateForm(instance=request.user)
+        profile_form = ProfileUpdateForm(instance=request.user.profile)
+    # later create context which key value pairs of that new isntance of form
+    context = {
+        'update_form': update_form, 'profile_form': profile_form
+    }
+    # pass that context to template
+    return render(request, template_name, context)
+
+
+
+
+
+RESIZING THE IMAGES BEFORE UPLOADING 
+----------------
+
+OVERRIDE SAVE METHOD IN OUR MODELS
+THIS SAVE () IS RUNNED AFTER V SAVE THE MODEL.
+this save() already exist in parent class.
+here v run the save() method of parent
+ 
+--super().save()
+
+next v resize the image.
+
+
+to open the image for the profile instance
+
+img = Image.open(self.image.path)
+	it opens the image of current instance sand save to img.
+
+
+
+CLASS BASED VIEWS
+-------------------
+
+listview - list of blogs
+detailview - detail of a specific blog
+updateview - update blog 
+deleteview - delete blog
+
+listview
+---------
+
+class Viewname(ListView):
+	model = name
+	context_object_name ='name'
+
+
+
+in urls.py
+-----------------
+path('list/', views.Viewname.as_views(), name='')
+
+
+change templates name yourmodelname_list.html 
+it naming convention is modelname_viewtype.html
+
+eg: post_list.html
+
+ bt van also change this default naming convention
+
+by specifying template_name = 'blog/home.html' in the view itself.
+
+v can also change default context name by setting
+'context_object_name' attrbute
+
+
+
+# to order the post from latest to oldest
+    ordering = ['-date']
+
+
+
+detailview
+--------------
+
+class PostDetail(DetailView):
+	model = Post
+
+
+next map the url 
+here v include the id of each toute along with url
+so if want detail post of id 1
+then it wud be  like
+	post/1
+	post/2
+
+path('post/<int:pk>', views.POstdetail.as_view(), name='post_details')
+
+here int is the type of variable v want which is int
+pk is the ok of the post.
+
+here v set the url in template to this page as
+
+{% for post in posts %}
+	<a href= '{% url 'post_details' post.pk %}' ></a>
+{% endfor %}
+
+
+page not found error
+------------------------------
+if v try to go to post with incorrect id
+it shows page not founs error. which means no post with the 
+given id.
+
+
+
+
+CREATE NEW POSTS- CreateView
+----------------------
+import CreateView
+here v need a form to add the details
+so need to specify the model and he fields needed.
+ 
+
+class ViewName(Createview):
+	model = Post
+	fields = ['title', 'content']
+
+
+mapthe urls to the view
+
+    path('create_post/', views.CreatePost.as_view(), name='blog-post-create'),
+
+
+later create the template as, modelname_form.html
+
+note: so here downt want to create a form module to create a post as in function based view, so class based views r more powerful.
+
+
+but there is an issue if v submit the form
+ie. Integrity error - NOT NULL constraint failed
+
+ir because v try to create a post bt we downt specify our author which is a foreign key field. and important evry post must have an author.
+ so want to specify current logged author in creatview.
+
+-- so we overide form_valid method
+
+
+	def form_valid(self, form) :
+		form.instance.author = self.request.user
+		return super().form_valid(form)
+
+which means bfore saving the post instance take that instance and set the author of that instance to current logged in user.
+and then run this form_valid() mthod on  our super class but bfore it runs v already overriden the form_valid() mthod.
+
+if v still runit cause error 
+ImproperlyConfigured at /create_post/
+no url to redirect to 
+
+
+here thepost is sabing to db vut we dont give where to redirect once submiited the post.
+
+to avoid this error
+
+get_absolute_url
+--------------------- 
+set, get_absulte_url method in model -used when v eant to that post details view.
+
+from django.shortcuts import reverse
+
+def get_absoluet_url(self):
+	return reverse('blogpost-detail', kwargs={'pk':self.pk})
+
+ie. here v retun to that new post detail page.
+so v give that post instance primary key.
+
+reverse vs redirect
+-----------------------
+
+redirect just redirect to a specific route, but reverse returns that full url to that route as a string.
+
+
+success_url
+------------------------
+ if eant  ot redirect to the homepageview or listview  not detailsview
+set success_url attribute to reverse_lazy('pathnamespace')
+
+login before creating post
+-----------------
+http://127.0.0.1:8000/create_post/ -
+
+the above url directs to create post page even though v r loged out,
+so when v navigate to this route, first nedd to show login screen. and after login createpost.
+
+for yhat in cbv's
+we first import 
+from djangi.contrib.auth.mixins import LoginRequredMixin
+
+and then sepcidy this class in view like
+	- class CreatePost(LoginRequiredMixin, CreateView):
+
+
+UPDATE VIEW TO UPDATE THE POST
+--------------------------------
+
+
+class Postupdae(updateView):
+	model = 
+	fields= []
+
+	    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
+
+
+later map the urk to the viw
+
+path(post/<int:pk>/update, views.name.asview(), name='')
+here v need to specify the variable pk since updating a specific post.
+
+
+
+
+Restricting users from jupdating others post
+----------------------------------
+
+v use another mixin,
+called userpassestestmixin
+
+so first import it
+from  django.cotrib.auth.mixins import Userpassestestmixin
+
+later add it to the updateview as argument
+
+then if v run it shows error
+
+PostUpdate is missing the implementation of the test_func() method.
+
+
+so here v implement test_func() in view.
+
+def test_func(self):
+post = self.get_object() 
+if self.request.user == post.author:
+	return True
+return False	
+
+get_object() to get the current post.
+next make sure current user is the author of the post.
+later here v check whether current user is the author of the post.
+if yes return true no, then return false
+
+
+
+
+DELETING POST -deleteview
+-----------------------------------
+
+import DeletView
+
+
+
+class postdelete()
+	model = Post
+
+map the url to the view
+	    path('post/<int:pk>/delete', views.PostDelete.as_view(), name='blog-post-delete'),
+
+
+model_confirm_delete.html
+-----------------------------------
+later create a template valled post_confirm_delete.html
+
+which conatins a form that asks users for whether to delete or not.
+
+class PostDelete(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = Post
+    success_url = reverse_lazy('blogapp-home')
+
+    def test_func(self):
+        post_obj = self.get_object()
+        if self.request.user == post_obj.author:
+            return True
+        return False
+
+here success_url since we want to return to the blog list page not its detail page.
+
+
+adding delete and update link in post deletail
+------------------------------------------------
+
+ if the logged in user is the author of post then -->
+
+
+  {% if object.author == user %}
+                    <p>
+                        <a href="{% url 'blog-post-delete' object.pk %}" class="btn btn-danger">Delete</a>
+                        <a href="{% url 'blog-post-update' object.pk %}" class="btn btn-success">Update</a>
+                    </p>
+                    {% endif %}
+ 
+
+
+Pagination in django
+------------------------
+
+contents in multiple pages instead of cluttering all in asingle page.
+
+from django.core.paginator import Paginator
+
+create some posts
+posts = ['1', '2', '3', '4','5']
+
+create a paginator object
+p = Paginator(posts, 2)
+this means two posts in a page, means total of total 3 pages.
+
+p.num_pages
+above code o/ps value 3
+
+to loop thru those pages use page_range attribute
+
+for page in p.page_range:
+	print(page)
+1
+2
+3
+
+to get specfic page from this
+p1 = p.page(1)
+here v get the page 1 of 3
+
+to get the number of that page.
+p1.number
+
+to get objects lists in that page
+p1.object_list
+
+
+prevous page or not
+--------------------
+
+>>> p1.has_previous()
+False
+>>> p1.has_next()
+True
+
+
+to get the next an previous page  number
+-----------------------------
+
+p1.next_page_number()
+p1.prevous_pae_number()
+
+
+
+lext back to the project
+-----------
+
+PAGINATE_BY
+-----------------
+in cbv's, here v need to set an attribute ON liSTvIEW calles 'paginateby'
+
+paginate_by = 2
+
+which paginates pages based on given number
+so 2 posts per page
+
+
+navigate thru pages
+---------------
+http://127.0.0.1:8000/?page=1
+http://127.0.0.1:8000/?page=2
+http://127.0.0.1:8000/?page=3
+http://127.0.0.1:8000/?page=4
+http://127.0.0.1:8000/?page=10 - page not foud 404 error.
+
+
+
+Navuigating thru pages
+------------------------
+adding links to page to navigate thru these page rather typing like yhis
+
+ 
+{% if is_paginated %}
+	
+	{% if page_obj.has_previous %}
+
+		<a href='?page=1'>First</a>		
+		<a href='?page={{page_obj.prevous_page_number}}'>Prevous</a>
+	{% endif%}
+
+{% endif %}
+
+
+if pge in paginated, then add links to prevous pages and next pages
+for examples if page has prevous pages then paginate to previous pages and also the first page.
+
+
+pag_obj - is a page object that view deafult pass to the template.
+
+to have links to few pages around the current page
+for eg: if cuuren page is 5 then provide links to page before and after
+5.
+
+
+<!--                loop thru all pages -->
+                {% for p in page_obj.paginator.page_range %}
+			{% if page_obj.number == p %}
+				                        <a href="?page={{ p }}" class="btn btn-info mb-4">{{ p }}</a>
+
+			{% endif %}
+                {% endfor %}
+
+with in thes looop, print only the cuurent page and some pages around it.
+ie if the current page. here page_obj.number is the current page
+	then display it differenlty.
+	
+
+
+ 
+<a href='?page=1'>First</a> - move to first page 
+<a href='?page={{page_obj.prevous_page_number}}'>Prevous</a>
+	-- move to prevous page
+
+
+Entire pagination code:
+-----------------------------
+
+
+<!-- pagination -->
+ {% if is_paginated %}
+
+      {% if page_obj.has_previous %}
+        <a class="btn btn-outline-info mb-4 mt-2" href="?page=1">First</a>
+        <a class="btn btn-outline-info mb-4 mt-2" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <a class="btn btn-info mb-4 mt-2" href="?page={{ num }}">{{ num }}</a>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+          <a class="btn btn-outline-info mb-4 mt-2" href="?page={{ num }}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a class="btn btn-outline-info mb-4 mt-2" href="?page={{ page_obj.next_page_number }}">Next</a>
+        <a class="btn btn-outline-info mb-4 mt-2" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+      {% endif %}
+
+ {% endif %}
+
+
+NEST TO LIST THE POST MADE BY AUTHOR WHEN V CLICK ON THAT AUTHOR
+------------------------------------------------------------------
+similar to post list view
+just need to filter posts based on it author
+
+
+    def get_query_set(self):
+        # v try to get the user when v click link on author name in post list
+        # to get that user object v do self.kwargs.get('username')
+        # self.kwargs is a dictionary of that user datas. and v use get method to fetch username of that user from that dictionary
+        # here if user exists in User model v store it in user variable else, return 404 error
+        user = get_object_or_404(User, username=self.kwargs.get('username'))
+	     # now filter the post list based on author and order it by date.
+        return Post.objects.filter(author=user).order_by('-date')
+
+
+later in urls.py
+-----------------------
+    path('user/<str:username>/', views.UserPostView.as_view(), name='users_blog'),
+
+specify the variable username which is a string type.
+here v navigate based on username of a user not id.
+
+
+EMAIL AND PASSWORD RESETTING
+---------------------
+
+create a url pattern  called password reset
+
+path('password-reset',
+         auth_views.PasswordResetView.as_view(template_name='usersapp/password_reset.html',                                              name='password_reset')),
+
+-- This views gives  atemplate that conains a form to be filled which password reset instruction to the email of user.
+ 
+password_reset.html
+------------------------
+{% extends 'blogapp/base.html' %}
+
+{% load crispy_forms_tags %}
+{% block content %}
+
+    <section id="login">
+
+                <div class="card">
+                    <div class="card-body">
+
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                         <h2 class="text-secondary border-bottom">Password Reset</h2>
+                    </div>
+                    {{form|crispy}}
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-info btn-block">Send Message</button>
+                    </div>
+
+                </form>
+                    </div>
+                </div>
+
+</section>
+
+{% endblock %}
+
+-- NEXT NEED TO CREATE A PAGE TO BE SHOWN AFTER THIS FORM IS SAVED SUCCESFULLY.
+-- SO FIRST CREATE A ROUTE THAT CONFIRMS EMAIL HAS BEEN SEND SUCCESSULLY.
+-- THEN THIS ROUTE DIRECTS TO AFOREMENTIONED PAGE AFTER FORM IS SUBMITTED.
+
+IN URLS.PY MODULE
+-------------------
+    path('password_reset/',
+         auth_views.PasswordResetView.as_view(template_name='usersapp/password_reset.html'),
+         name='password_reset'),
+    path('password_reset/done',
+         auth_views.PasswordResetDoneView.as_view(template_name='usersapp/password_reset_done.html'),
+         name='password_reset_done'),
+
+
+IF V RUNS THE SRVER IT THROWS ErrOR.
+
+NoReverseMatch at /user/password_reset/
+Reverse for 'password_reset_done' not found. 'password_reset_done' is not a valid view function or pattern name.
+
+it BECUASE, there is no route named password_reset_done.
+ 
+so lets create this route to solve issue.
+
+later add below line to the project/urls.py file
+
+ re_path(r'^', include('django.contrib.auth.urls'))
+
+CONNECTION REFUSED ERROR
+------------------------------
+ConnectionRefusedError at /user/password-reset/
+
+it shows v havent set up an email server
+
+
+HIDING PASSWORD AND EMAIL IN ENVIRONMENT - PYTHON
+-----------------------------------------
+
+
+
+
+
+SEARCH FEATURE IN CLASS BASED VIEWS
+----------------------
+
+Class HomeView(ListView):
+    model = Post
+    context_object_name = 'posts'
+    # to order the post from latest to oldest
+    ordering = ['-date']
+    paginate_by = 4
+
+    def get_queryset(self):
+        query = self.request.GET.get('q')
+        if query:
+            posts = self.model.objects.filter(title__icontains=query)
+        else:
+            posts = self.model.objects.none()
+        return posts
+
+
+here v define valled get_queryset
+qand get the searxh term q and if true then filter the post 
+by searching which term in title matcheswith the query.
+and if macthes return that post 
+
+
+
+in templates
+----------------
+ssearch feature-->
+     <form class="form-inline mr-4" method="GET" action="">
+                            <input class="form-control mr-sm-2" name="q" type="search" placeholder="search posts" aria-label="Search" value="{{ request.GET.q }}">
+                             <input type="submit" value="Search" class="btn btn-outline-white btn-md my-0 ml-sm-2">
+
+                        </form>
+
+
+
+
+
+template tags in django
+-------------------------
+create a templatetags dir in apps dir.
+
+later create py file eg: my_tags.py
+then create a __init__.py file to make it as python package.
+later add the custom inclusion template tag and the code to my_tags.py
+
+
+from django import template
+
+from ..models import Post
+
+register = template.Library()
+@register.inclusion_tag('blogapp/sidebars.html')
+def sidebar_sorted_tags():
+    posts = Post.objects.all().order_by('-date')[:5]
+    return {'posts': posts}
+
+then add the bloew template lang to base.html
+
+{% load my_tags %}
+
+{% sidebar_sorted_tags %}
+
+sidebars.html
+-----------------
+{% block content %}
+<section id="sidebar">
+
+    <h4 class="text-secondary">Latest posts</h4>
+ <div class="list-group">
+     {% for post in posts %}
+        <a href="{% url 'blog_post_detail' post.pk %}" class="list-group-item list-group-item-action list-group-item-info text-dark">
+            {{post}}
+        </a>
+     {% endfor %}
+ </div>
+
+
+</section>
+
+{% endblock %}
+
+
+then restart the server,
+
+
+
+
+megan
+testing888
+
+benzema
+testing2011
+
+
+mathew
+testing2022
+
+
+
+
+
